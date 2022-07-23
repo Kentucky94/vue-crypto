@@ -158,7 +158,7 @@
 <script>
     import GraphTable from "./components/Graph/Graph";
     import {getFullCoinList, loadTickers, subscribeToTicker, unsubscribeFromTicker} from "./utils/api";
-    import {intervalDelayTime, lsTickersKey, tickerToShowOnPage} from "./constants";
+    import {lsTickersKey, tickerToShowOnPage} from "./constants";
 
     export default {
     name: "App",
@@ -170,7 +170,6 @@
             tickers: [],   //  [{name: ... , price: ...}]
             selected: null,
             graph: [],
-            graphInterval: null,
             showExistingTickerError: false,
             page: 1,
             filter: ""
@@ -240,21 +239,9 @@
         updateTicker (tickerName, newPrice) {
             const ticker = this.tickers.find(t => t.name === tickerName);
             ticker.price = newPrice;
-        },
-        initGraphInterval (tickerName) {
-            this.graphInterval = setInterval(() => {
-                // getTickerData(tickerName).then((res) => {
-                //     this.graph.push(res.USD);
-                // }).catch(error => {
-                //     alert(error.message);
-                //     this.clearGraphInterval();
-                // });
-            }, intervalDelayTime)
-        },
-        clearGraphInterval () {
-            if (this.graphInterval !== null) {
-                clearInterval(this.graphInterval);
-                this.graphInterval = null;
+
+            if (ticker === this.selected) {
+                this.graph.push(ticker.price);
             }
         },
         getAllCoins () {
@@ -287,19 +274,15 @@
         },
         handleTickerDelete (tickerToRemove) {
             if (tickerToRemove === this.selected) {
-                this.clearGraphInterval();
                 this.selected = null;
             }
             unsubscribeFromTicker(tickerToRemove.name);
             this.tickers = this.tickers.filter(t => t !== tickerToRemove);
         },
         selectGraph (t) {
-            this.clearGraphInterval();
             this.selected = t;
-            this.initGraphInterval(t.name);
         },
         removeGraph () {
-            this.clearGraphInterval();
             this.selected = null;
         },
         saveTickersToLS () {
