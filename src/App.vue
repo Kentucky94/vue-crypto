@@ -156,11 +156,11 @@
 </template>
 
 <script>
-import GraphTable from "./components/Graph/Graph";
-import {getTickerData, getFullCoinList, getTickersData} from "./utils/api";
-import {tickerToShowOnPage, intervalDelayTime, lsTickersKey} from "./constants";
+    import GraphTable from "./components/Graph/Graph";
+    import {getFullCoinList, loadTickers, subscribeToTicker, unsubscribeFromTicker} from "./utils/api";
+    import {intervalDelayTime, lsTickersKey, tickerToShowOnPage} from "./constants";
 
-export default {
+    export default {
     name: "App",
     components: {GraphTable},
     data () {
@@ -170,7 +170,6 @@ export default {
             tickers: [],   //  [{name: ... , price: ...}]
             selected: null,
             graph: [],
-            tickersInterval: null,
             graphInterval: null,
             showExistingTickerError: false,
             page: 1,
@@ -180,11 +179,8 @@ export default {
     mounted () {
         this.loadTickerFromLS();
         this.getAllCoins();
-        this.initTickersInterval();
         this.loadUrlData();
-    },
-    beforeUnmount () {
-        this.clearTickersInterval();
+        loadTickers();
     },
     watch: {
         tickers: {
@@ -241,39 +237,18 @@ export default {
         }
     },
     methods: {
-        initTickersInterval () {
-            try {
-                if (!this.tickersInterval) {
-                    this.tickersInterval = setInterval(async () => {
-                        if (this.paginatedTickers.length) {
-                            const data = await getTickersData(this.paginatedTickers);
-
-                            Object.keys(data).forEach(key => {
-                                const ticker = this.tickers.find(t => t.name === key);
-
-                                ticker.price = data[key].USD;
-                            })
-                        }
-                    }, intervalDelayTime)
-                }
-            } catch (e) {
-                console.log(e);
-            }
-        },
-        clearTickersInterval () {
-            if (this.tickersInterval) {
-                clearInterval(this.tickersInterval);
-            }
-            this.tickersInterval = null;
+        updateTicker (tickerName, newPrice) {
+            const ticker = this.tickers.find(t => t.name === tickerName);
+            ticker.price = newPrice;
         },
         initGraphInterval (tickerName) {
             this.graphInterval = setInterval(() => {
-                getTickerData(tickerName).then((res) => {
-                    this.graph.push(res.USD);
-                }).catch(error => {
-                    alert(error.message);
-                    this.clearGraphInterval();
-                });
+                // getTickerData(tickerName).then((res) => {
+                //     this.graph.push(res.USD);
+                // }).catch(error => {
+                //     alert(error.message);
+                //     this.clearGraphInterval();
+                // });
             }, intervalDelayTime)
         },
         clearGraphInterval () {
@@ -300,13 +275,12 @@ export default {
                     return;
                 }
 
-                const data = await getTickerData(tickerName);
-                const ticker = {name: tickerName.toUpperCase(), price: data.USD};
-
+                const ticker = {name: tickerName.toUpperCase(), price: "-"};
                 this.tickers.push(ticker);
-                this.graph.push(data.USD);
                 this.newTickerName = "";
                 this.filter = "";
+
+                subscribeToTicker(tickerName, newPrice => this.updateTicker(tickerName, newPrice));
             } catch (error) {
                 alert(error.message);
             }
@@ -316,6 +290,7 @@ export default {
                 this.clearGraphInterval();
                 this.selected = null;
             }
+            unsubscribeFromTicker(tickerToRemove.name);
             this.tickers = this.tickers.filter(t => t !== tickerToRemove);
         },
         selectGraph (t) {
@@ -334,6 +309,12 @@ export default {
             const list = localStorage.getItem(lsTickersKey);
             if (list) {
                 this.tickers = JSON.parse(list);
+            }
+
+            if (this.tickers.length) {
+                this.tickers.forEach(t => {
+                    subscribeToTicker(t.name, price => this.updateTicker(t.name, price))
+                })
             }
         },
         filterTickers (event) {
