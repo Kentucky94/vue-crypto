@@ -157,7 +157,7 @@
 
 <script>
     import GraphTable from "./components/Graph/Graph";
-    import {getFullCoinList, loadTickers, subscribeToTicker, unsubscribeFromTicker} from "./utils/api";
+    import {getFullCoinList, subscribeToTicker, unsubscribeFromTicker} from "./utils/api";
     import {lsTickersKey, tickerToShowOnPage} from "./constants";
 
     export default {
@@ -179,7 +179,6 @@
         this.loadTickerFromLS();
         this.getAllCoins();
         this.loadUrlData();
-        loadTickers();
     },
     watch: {
         tickers: {
